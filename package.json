@@ -1,7 +1,7 @@
 {
-  "name": "react-native-image-compress",
+  "name": "@remobile/react-native-image-compress",
   "version": "1.0.0",
-  "description": "react native base64 image compress, android and ios included.",
+  "description": "A React Native module for image compression on android and ios.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,11 +13,9 @@
   "keywords": [
     "react",
     "native",
-    "base64",
     "image",
     "compress",
     "android",
-    "and",
     "ios"
   ],
   "author": "gonghonggao",
