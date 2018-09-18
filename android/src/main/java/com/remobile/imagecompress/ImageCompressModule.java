@@ -48,11 +48,13 @@ public class ImageCompressModule extends BaseModule {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             image.compress(Bitmap.CompressFormat.JPEG, 100, baos);//质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
             int options = 100;
-            while ( baos.toByteArray().length > maxFileSize) { //循环判断如果压缩后图片是否大于100kb,大于继续压缩
+            while (baos.toByteArray().length > maxFileSize && options > 10) { //循环判断如果压缩后图片是否大于maxFileSize,大于继续压缩
                baos.reset();//重置baos即清空baos
+				Log.d("compressImage:", "options" + options);
                image.compress(Bitmap.CompressFormat.JPEG, options, baos);//这里压缩options%，把压缩后的数据存放到baos中
                options -= 10;//每次都减少10
             }
+
             ByteArrayInputStream isBm = new ByteArrayInputStream(baos.toByteArray());//把压缩后的数据baos存放到ByteArrayInputStream中
 			Bitmap bitmap = BitmapFactory.decodeStream(isBm, null, null);//把ByteArrayInputStream数据生成图片
 			String base64 = bitmapToBase64(bitmap);
@@ -60,6 +62,7 @@ public class ImageCompressModule extends BaseModule {
             map.putString("base64", base64);
             promise.resolve(map);
         } catch(Exception e) {
+            Log.d("compressImage:", "Exception" + e);
             promise.reject("压缩异常", e);
         }
     }
