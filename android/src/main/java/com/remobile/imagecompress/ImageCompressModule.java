@@ -1,11 +1,6 @@
 package com.remobile.imagecompress;
-
-import android.app.Activity;
-import android.app.Application;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
 import com.facebook.react.bridge.Promise;
@@ -15,21 +10,21 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-
+import java.util.UUID;
 
 public class ImageCompressModule extends BaseModule {
 
     public ImageCompressModule(ReactApplicationContext reactContext) {
         super(reactContext);
+        context = reactContext;
     }
 
     public String getName() {
@@ -37,36 +32,55 @@ public class ImageCompressModule extends BaseModule {
     }
 
     @ReactMethod
-    public void compressImage(String imgSrc, int maxFileSize, Promise promise) {
-        try {
-            Bitmap image =  getBitMBitmap(imgSrc);
-            WritableMap map = Arguments.createMap();
-            if (image == null) {
-                map.putString("success", "false");
-                promise.resolve(map);
-            }
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            image.compress(Bitmap.CompressFormat.JPEG, 100, baos);//质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
-            int options = 100;
-            while (baos.toByteArray().length > maxFileSize && options > 10) { //循环判断如果压缩后图片是否大于maxFileSize,大于继续压缩
-               baos.reset();//重置baos即清空baos
-				Log.d("compressImage:", "options" + options);
-               image.compress(Bitmap.CompressFormat.JPEG, options, baos);//这里压缩options%，把压缩后的数据存放到baos中
-               options -= 10;//每次都减少10
-            }
+    public void compressImage(final String imgSrc, final int maxFileSize, final Promise promise) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Bitmap image =  getBitMBitmap(imgSrc);
+                    WritableMap map = Arguments.createMap();
+                    if (image == null) {
+                        map.putString("success", "false");
+                        promise.resolve(map);
+                    }
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    image.compress(Bitmap.CompressFormat.JPEG, 90, baos);//质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
+                    int options = 100;
+                    while (baos.toByteArray().length > maxFileSize && options > 0) { //循环判断如果压缩后图片是否大于maxFileSize,大于继续压缩
+                        options *= 0.6;//每次60%
+                        baos.reset();//重置baos即清空baos
+                        Log.d("compressImage:", "options" + options);
+                        image.compress(Bitmap.CompressFormat.JPEG, options, baos);//这里压缩options%，把压缩后的数据存放到baos中
 
-            ByteArrayInputStream isBm = new ByteArrayInputStream(baos.toByteArray());//把压缩后的数据baos存放到ByteArrayInputStream中
-			Bitmap bitmap = BitmapFactory.decodeStream(isBm, null, null);//把ByteArrayInputStream数据生成图片
-			String base64 = bitmapToBase64(bitmap);
-            map.putString("success", "true");
-            map.putString("base64", base64);
-            promise.resolve(map);
-        } catch(Exception e) {
-            Log.d("compressImage:", "Exception" + e);
-            promise.reject("压缩异常", e);
-        }
+                    }
+                    String filename = "image-" + UUID.randomUUID().toString() + ".jpg";
+                    File f = new File(context.getCacheDir(), filename);
+                    FileOutputStream fo;
+                    try {
+                        fo = new FileOutputStream(f);
+                        try {
+                            fo.write(baos.toByteArray());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (image != null) {
+                         image.recycle();
+                         image = null;
+                     }
+                    map.putString("success", "true");
+                    map.putString("file", f.getPath());
+                    promise.resolve(map);
+                } catch(Exception e) {
+                    Log.d("compressImage:", "Exception" + e);
+                    promise.reject("压缩异常", e);
+                }
+            }
+        }).start();
     }
-
 
 	/**
 	 * 根据路径 转bitmap
